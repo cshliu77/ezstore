@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Build outputs
+backend/ezstore-api
+frontend/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+
+# Test
+coverage/
+*.out
+
+# Swagger generated (keep in repo but ignore local regeneration artifacts)
+
+# Docker
+.docker/
+
+# Bun
+bun.lockb
+
+# Playwright
+.playwright-mcp/
+test-results/
+playwright-report/
+
+# Screenshots (generated during testing)
+*.png
+
+# Claude
+.claude/

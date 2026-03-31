@@ -1,0 +1,898 @@
+basePath: /
+definitions:
+  gorm.DeletedAt:
+    properties:
+      time:
+        type: string
+      valid:
+        description: Valid is true if Time is not NULL
+        type: boolean
+    type: object
+  models.Customer:
+    properties:
+      address:
+        type: string
+      contact_email:
+        type: string
+      contact_name:
+        type: string
+      contact_phone:
+        type: string
+      createdAt:
+        type: string
+      credit_score:
+        type: integer
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      id:
+        type: integer
+      level:
+        type: string
+      name:
+        type: string
+      tax_id:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  models.Order:
+    properties:
+      createdAt:
+        type: string
+      customer:
+        $ref: '#/definitions/models.Customer'
+      customer_id:
+        type: integer
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      id:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/models.OrderItem'
+        type: array
+      notes:
+        type: string
+      order_number:
+        type: string
+      quotation:
+        $ref: '#/definitions/models.Quotation'
+      quotation_id:
+        type: integer
+      status:
+        type: string
+      total_price:
+        type: number
+      updatedAt:
+        type: string
+    type: object
+  models.OrderItem:
+    properties:
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      id:
+        type: integer
+      order_id:
+        type: integer
+      product_id:
+        type: integer
+      product_name:
+        type: string
+      quantity:
+        type: integer
+      subtotal:
+        type: number
+      unit_price:
+        type: number
+      updatedAt:
+        type: string
+    type: object
+  models.Product:
+    properties:
+      cost:
+        type: number
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      description:
+        type: string
+      id:
+        type: integer
+      inventory:
+        type: integer
+      list_price:
+        type: number
+      name:
+        type: string
+      product_number:
+        type: string
+      supplier:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  models.Quotation:
+    properties:
+      createdAt:
+        type: string
+      customer:
+        $ref: '#/definitions/models.Customer'
+      customer_id:
+        type: integer
+      customer_level:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      id:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/models.QuotationItem'
+        type: array
+      notes:
+        type: string
+      pricing_factor:
+        type: number
+      profit_amount:
+        type: number
+      profit_rate:
+        type: number
+      quotation_number:
+        type: string
+      status:
+        type: string
+      total_price:
+        type: number
+      updatedAt:
+        type: string
+    type: object
+  models.QuotationItem:
+    properties:
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      id:
+        type: integer
+      list_price:
+        type: number
+      product_cost:
+        type: number
+      product_id:
+        type: integer
+      product_name:
+        type: string
+      quantity:
+        type: integer
+      quotation_id:
+        type: integer
+      subtotal:
+        type: number
+      unit_price:
+        type: number
+      updatedAt:
+        type: string
+    type: object
+  services.OrderCreateInput:
+    properties:
+      customer_id:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/services.OrderItemInput'
+        minItems: 1
+        type: array
+      notes:
+        type: string
+      quotation_id:
+        type: integer
+    required:
+    - customer_id
+    - items
+    type: object
+  services.OrderItemInput:
+    properties:
+      product_id:
+        type: integer
+      quantity:
+        minimum: 1
+        type: integer
+      unit_price:
+        type: number
+    required:
+    - product_id
+    - quantity
+    - unit_price
+    type: object
+  services.QuotationCreateInput:
+    properties:
+      customer_id:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/services.QuotationItemInput'
+        minItems: 1
+        type: array
+      notes:
+        type: string
+      pricing_factor:
+        type: number
+    required:
+    - customer_id
+    - items
+    - pricing_factor
+    type: object
+  services.QuotationItemInput:
+    properties:
+      product_id:
+        type: integer
+      quantity:
+        minimum: 1
+        type: integer
+    required:
+    - product_id
+    - quantity
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: EZStore B2B 報價與訂單管理系統 API。提供客戶管理、產品管理、報價單管理（含報價因子計算）及訂單管理功能。
+  title: EZStore API
+  version: "1.0"
+paths:
+  /api/v1/customers:
+    get:
+      consumes:
+      - application/json
+      description: 取得客戶列表，支援分頁與搜尋（搜尋客戶名稱或統一編號）
+      parameters:
+      - default: 1
+        description: 頁碼（預設 1）
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每頁筆數（預設 20）
+        in: query
+        name: page_size
+        type: integer
+      - description: 搜尋關鍵字
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 列出客戶
+      tags:
+      - customers
+    post:
+      consumes:
+      - application/json
+      description: 建立新客戶，需提供客戶名稱、統一編號（8碼數字）、客戶等級（vip/standard/new）等資料
+      parameters:
+      - description: 客戶資料
+        in: body
+        name: customer
+        required: true
+        schema:
+          $ref: '#/definitions/models.Customer'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Customer'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 建立客戶
+      tags:
+      - customers
+  /api/v1/customers/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 根據 ID 軟刪除客戶（資料不會真正刪除，僅標記為已刪除）
+      parameters:
+      - description: 客戶 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 刪除客戶
+      tags:
+      - customers
+    get:
+      consumes:
+      - application/json
+      description: 根據 ID 取得客戶詳細資料
+      parameters:
+      - description: 客戶 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Customer'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 取得單一客戶
+      tags:
+      - customers
+    put:
+      consumes:
+      - application/json
+      description: 根據 ID 修改客戶資料
+      parameters:
+      - description: 客戶 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 客戶資料
+        in: body
+        name: customer
+        required: true
+        schema:
+          $ref: '#/definitions/models.Customer'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Customer'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 修改客戶
+      tags:
+      - customers
+  /api/v1/orders:
+    get:
+      consumes:
+      - application/json
+      description: 取得訂單列表，支援分頁、狀態篩選與客戶篩選。狀態可為 pending（待處理）、confirmed（已確認）、completed（已完成）、cancelled（已取消）。
+      parameters:
+      - default: 1
+        description: 頁碼（預設 1）
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每頁筆數（預設 20）
+        in: query
+        name: page_size
+        type: integer
+      - description: 狀態篩選
+        in: query
+        name: status
+        type: string
+      - description: 客戶 ID 篩選
+        in: query
+        name: customer_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 列出訂單
+      tags:
+      - orders
+    post:
+      consumes:
+      - application/json
+      description: 建立新訂單。需提供客戶 ID 與訂單明細（product_id、unit_price、quantity）。可選擇關聯已發佈的報價單（quotation_id）。系統會自動計算復價（單價
+        × 數量）與總價。
+      parameters:
+      - description: 訂單資料
+        in: body
+        name: order
+        required: true
+        schema:
+          $ref: '#/definitions/services.OrderCreateInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Order'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 建立訂單
+      tags:
+      - orders
+  /api/v1/orders/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 根據 ID 軟刪除訂單
+      parameters:
+      - description: 訂單 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 刪除訂單
+      tags:
+      - orders
+    get:
+      consumes:
+      - application/json
+      description: 根據 ID 取得訂單詳細資料，包含客戶資訊、訂單明細（產品名稱、單價、數量、復價）與總價
+      parameters:
+      - description: 訂單 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Order'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 取得單一訂單
+      tags:
+      - orders
+    put:
+      consumes:
+      - application/json
+      description: 根據 ID 修改訂單資料，修改後系統會重新計算總價
+      parameters:
+      - description: 訂單 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 訂單資料
+        in: body
+        name: order
+        required: true
+        schema:
+          $ref: '#/definitions/services.OrderCreateInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Order'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 修改訂單
+      tags:
+      - orders
+  /api/v1/pricing-factor/{level}:
+    get:
+      consumes:
+      - application/json
+      description: 根據客戶等級取得預設的報價因子。VIP 客戶為 0.80（八折）、Standard 客戶為 0.90（九折）、New 客戶為
+        1.00（原價）。報價人員可在建立報價單時自行調整此值。
+      parameters:
+      - description: 客戶等級（vip/standard/new）
+        in: path
+        name: level
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 取得預設報價因子
+      tags:
+      - pricing
+  /api/v1/products:
+    get:
+      consumes:
+      - application/json
+      description: 取得產品列表，支援分頁與搜尋（搜尋產品名稱或產品編號）
+      parameters:
+      - default: 1
+        description: 頁碼（預設 1）
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每頁筆數（預設 20）
+        in: query
+        name: page_size
+        type: integer
+      - description: 搜尋關鍵字
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 列出產品
+      tags:
+      - products
+    post:
+      consumes:
+      - application/json
+      description: 建立新產品，需提供產品編號、名稱、成本、牌價等資料
+      parameters:
+      - description: 產品資料
+        in: body
+        name: product
+        required: true
+        schema:
+          $ref: '#/definitions/models.Product'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Product'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 建立產品
+      tags:
+      - products
+  /api/v1/products/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 根據 ID 軟刪除產品
+      parameters:
+      - description: 產品 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 刪除產品
+      tags:
+      - products
+    get:
+      consumes:
+      - application/json
+      description: 根據 ID 取得產品詳細資料，包含成本、牌價、庫存等資訊
+      parameters:
+      - description: 產品 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Product'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 取得單一產品
+      tags:
+      - products
+    put:
+      consumes:
+      - application/json
+      description: 根據 ID 修改產品資料
+      parameters:
+      - description: 產品 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 產品資料
+        in: body
+        name: product
+        required: true
+        schema:
+          $ref: '#/definitions/models.Product'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Product'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 修改產品
+      tags:
+      - products
+  /api/v1/quotations:
+    get:
+      consumes:
+      - application/json
+      description: 取得報價單列表，支援分頁、狀態篩選與客戶篩選。狀態可為 draft（草稿）或 published（已發佈）。
+      parameters:
+      - default: 1
+        description: 頁碼（預設 1）
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每頁筆數（預設 20）
+        in: query
+        name: page_size
+        type: integer
+      - description: 狀態篩選（draft/published）
+        in: query
+        name: status
+        type: string
+      - description: 客戶 ID 篩選
+        in: query
+        name: customer_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 列出報價單
+      tags:
+      - quotations
+    post:
+      consumes:
+      - application/json
+      description: 建立新報價單。需提供客戶 ID、報價因子與產品明細（product_id 和 quantity）。系統會自動計算單價（牌價 ×
+        報價因子）、復價（單價 × 數量）、總價、獲利金額與獲利率。報價因子預設值根據客戶等級：VIP=0.80、Standard=0.90、New=1.00，可自行調整。
+      parameters:
+      - description: 報價單資料
+        in: body
+        name: quotation
+        required: true
+        schema:
+          $ref: '#/definitions/services.QuotationCreateInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Quotation'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 建立報價單
+      tags:
+      - quotations
+  /api/v1/quotations/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 根據 ID 軟刪除報價單。僅草稿狀態（draft）的報價單可以刪除，已發佈（published）的報價單不可刪除。
+      parameters:
+      - description: 報價單 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 刪除報價單
+      tags:
+      - quotations
+    get:
+      consumes:
+      - application/json
+      description: 根據 ID 取得報價單詳細資料，包含客戶資訊、報價因子、報價產品明細、總價、獲利金額與獲利率
+      parameters:
+      - description: 報價單 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Quotation'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 取得單一報價單
+      tags:
+      - quotations
+    put:
+      consumes:
+      - application/json
+      description: 根據 ID 修改報價單。僅草稿狀態（draft）的報價單可以修改，已發佈（published）的報價單不可修改。修改後系統會重新計算所有金額。
+      parameters:
+      - description: 報價單 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 報價單資料
+        in: body
+        name: quotation
+        required: true
+        schema:
+          $ref: '#/definitions/services.QuotationCreateInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Quotation'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 修改報價單
+      tags:
+      - quotations
+  /api/v1/quotations/{id}/publish:
+    post:
+      consumes:
+      - application/json
+      description: 將報價單狀態從草稿（draft）變更為已發佈（published）。已發佈的報價單不可再修改或刪除。此操作不可逆。
+      parameters:
+      - description: 報價單 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Quotation'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 發佈報價單
+      tags:
+      - quotations
+swagger: "2.0"

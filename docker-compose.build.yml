@@ -1,0 +1,10 @@
+services:
+  backend:
+    image: ezstore-backend:local
+    pull_policy: never
+    build: ./backend
+
+  frontend:
+    image: ezstore-frontend:local
+    pull_policy: never
+    build: ./frontend

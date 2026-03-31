@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ezstore
+      POSTGRES_PASSWORD: ezstore
+      POSTGRES_DB: ezstore
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./scripts:/scripts:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ezstore"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ghcr.io/cshliu77/ezstore/backend:latest
+    pull_policy: always
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: ezstore
+      DB_PASSWORD: ezstore
+      DB_NAME: ezstore
+      GIN_MODE: release
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    image: ghcr.io/cshliu77/ezstore/frontend:latest
+    pull_policy: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
