@@ -83,3 +83,15 @@ Open your browser and navigate to:
 | Backend API | http://localhost:8080/api/v1 |
 | Swagger UI | http://localhost:8080/swagger/index.html |
 | Health Check | http://localhost:8080/health |
+
+### Step 9: Configure MCP for AI Agents Development and Testing
+
+| Tool | Download |
+|------|----------|
+| ADK Dev Skills | https://google.github.io/adk-docs/tutorials/coding-with-ai/#adk-dev-skills |
+| ADK Docs MCP Server | https://google.github.io/adk-docs/tutorials/coding-with-ai/#adk-docs-mcp-server |
+| Context7 MCP | https://context7.com/docs/resources/all-clients |
+| Playwright-MCP | https://github.com/microsoft/playwright-mcp?tab=readme-ov-file#getting-started |
+| chrome-devtools-mcp | https://github.com/microsoft/playwright-mcp?tab=readme-ov-file#getting-started |
+
+
