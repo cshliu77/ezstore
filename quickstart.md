@@ -16,6 +16,7 @@ Install the following tools (latest versions recommended):
 | Python | https://www.python.org/downloads/ |
 | Docker Desktop | https://www.docker.com/products/docker-desktop/ |
 | Playwright | https://playwright.dev/docs/intro |
+| uv | https://docs.astral.sh/uv/getting-started/installation/ |
 
 ---
 
@@ -41,7 +42,7 @@ docker compose up -d
 
 > Uses pre-built images from GHCR (default, no build required).
 
-### Step 4: (Optional) Run with local build
+### Step 4: Run with local build
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
