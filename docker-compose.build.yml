@@ -4,6 +4,16 @@ services:
     pull_policy: never
     build: ./backend
 
+  mcp-server:
+    image: ezstore-mcp-server:local
+    pull_policy: never
+    build: ./mcp_server
+
+  agent:
+    image: ezstore-agent:local
+    pull_policy: never
+    build: ./agent
+
   frontend:
     image: ezstore-frontend:local
     pull_policy: never

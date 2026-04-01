@@ -32,6 +32,25 @@ services:
       db:
         condition: service_healthy
 
+  mcp-server:
+    image: ghcr.io/cshliu77/ezstore/mcp-server:latest
+    pull_policy: always
+    environment:
+      BACKEND_URL: http://backend:8080
+      FRONTEND_URL: http://localhost:3000
+    depends_on:
+      - backend
+
+  agent:
+    image: ghcr.io/cshliu77/ezstore/agent:latest
+    pull_policy: always
+    environment:
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      MCP_URL: http://mcp-server:8000/mcp
+      FRONTEND_URL: http://localhost:3000
+    depends_on:
+      - mcp-server
+
   frontend:
     image: ghcr.io/cshliu77/ezstore/frontend:latest
     pull_policy: always
@@ -39,6 +58,7 @@ services:
       - "3000:80"
     depends_on:
       - backend
+      - agent
 
   e2e:
     image: ghcr.io/cshliu77/ezstore/e2e:latest

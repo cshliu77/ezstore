@@ -18,6 +18,7 @@ EZStore provides four core modules for managing the B2B sales pipeline:
 | **Product Management** | CRUD for products — product number, name, description, cost, list price, inventory, supplier |
 | **Quotation Management** | Create, edit, publish, and delete quotations. Pricing is computed from a *pricing factor* applied to list prices. Published quotations become immutable. |
 | **Order Management** | CRUD for orders — optionally linked to a published quotation |
+| **AI Agent** | Natural language quotation assistant — query, duplicate, adjust pricing factor/total price, convert to order. Powered by Google ADK + Gemini 2.5 Flash + MCP Server. |
 
 ### Tech Stack
 
@@ -26,15 +27,25 @@ EZStore provides four core modules for managing the B2B sales pipeline:
 | Backend | Go 1.25 · Gin · GORM · Swagger (swaggo) · Testify |
 | Frontend | React 19 · TypeScript · Tailwind CSS 4 · Vite 8 · TanStack React Query · React Hook Form · React Router |
 | Database | PostgreSQL 16 |
+| AI Agent | Python 3.11 · Google ADK 1.22+ · Gemini 2.5 Flash · FastMCP · Streamable HTTP |
 | Build & Deploy | Docker · Docker Compose · Bun (frontend) · Nginx (frontend serving & API proxy) |
 
 ### Project Structure
 
 ```
 ezstore/
-├── docker-compose.yml          # Orchestrates all three services
+├── docker-compose.yml          # Orchestrates all services
 ├── scripts/
 │   └── seed-test-data.sql      # Idempotent test dataset (TRUNCATE + INSERT)
+├── agent/
+│   ├── Dockerfile
+│   ├── pyproject.toml           # ADK agent dependencies
+│   └── quotation_agent/
+│       └── agent.py             # Agent definition (Gemini 2.5 Flash + MCP tools)
+├── mcp_server/
+│   ├── Dockerfile
+│   ├── pyproject.toml           # MCP server dependencies
+│   └── server.py                # FastMCP server with 6 quotation tools
 ├── backend/
 │   ├── Dockerfile
 │   ├── main.go                 # Entry point — Gin + GORM + Swagger init
@@ -128,6 +139,12 @@ swag --version            # swag version v1.x+
 ```
 
 ### Quick Start (Docker Compose)
+
+**Environment variable (required for AI Agent):**
+
+```bash
+export GOOGLE_API_KEY=your-google-ai-studio-api-key
+```
 
 **Option A — Use pre-built images from GHCR (default, no build required):**
 
@@ -237,6 +254,52 @@ profit_rate  = profit ÷ total_price
 - It cannot be deleted (HTTP 403)
 - It cannot be published again (HTTP 400)
 
+### AI Agent
+
+EZStore includes a natural-language quotation assistant powered by Google ADK and Gemini 2.5 Flash.
+
+**Architecture:**
+
+```
+User → React Chat UI → ADK API Server (Agent) → MCP Server → Backend REST API
+                            ↑                        ↑
+                       Gemini 2.5 Flash         Streamable HTTP
+                       (AI Studio API key)      (FastMCP)
+```
+
+**Capabilities:**
+
+| Operation | Description |
+|-----------|-------------|
+| Query quotation | Look up quotation details by quotation number |
+| List customer quotations | List all quotations for a given customer name |
+| Duplicate quotation | Create a new draft copy of a quotation |
+| Modify pricing factor | Duplicate first, then update the pricing factor on the copy |
+| Modify total price | Duplicate first, then binary-search the pricing factor to reach a target total |
+| Convert to order | Publish the quotation (if draft) and create a corresponding order |
+
+**Key design:**
+- All modifications use **copy-on-write** — the original quotation is never changed
+- All responses include **clickable system links** to the quotation/order detail pages
+- The agent **refuses non-quotation requests** and stays focused on quotation management
+
+**Local development:**
+
+```bash
+# MCP Server
+cd mcp_server
+uv venv && source .venv/bin/activate
+uv pip install -r pyproject.toml
+BACKEND_URL=http://localhost:8080 python server.py
+
+# Agent (in another terminal)
+cd agent
+uv venv && source .venv/bin/activate
+uv pip install -r pyproject.toml
+export GOOGLE_API_KEY=your-key
+MCP_URL=http://localhost:8000/mcp adk web quotation_agent
+```
+
 ### License
 
 This project is licensed under the [MIT License](LICENSE).
@@ -251,9 +314,9 @@ This project is licensed under the [MIT License](LICENSE).
 
 - **Name:** EZStore
 - **Purpose:** B2B quotation and order management system
-- **Language:** Go (backend), TypeScript/React (frontend)
+- **Language:** Go (backend), TypeScript/React (frontend), Python (agent + MCP server)
 - **Database:** PostgreSQL 16
-- **Deployment:** Docker Compose (3 services: db, backend, frontend)
+- **Deployment:** Docker Compose (5 services: db, backend, frontend, agent, mcp-server)
 
 ### Architecture Pattern
 
@@ -288,6 +351,10 @@ HTTP Request → Handler (Gin) → Service (business logic) → Repository (GORM
 | API clients | `frontend/src/api/*.ts` |
 | Page components | `frontend/src/pages/*.tsx` |
 | Shared components | `frontend/src/components/shared/*.tsx` |
+| Agent definition | `agent/quotation_agent/agent.py` |
+| MCP Server (6 tools) | `mcp_server/server.py` |
+| Agent Chat UI | `frontend/src/pages/AgentChatPage.tsx` |
+| Agent API client | `frontend/src/api/agentApi.ts` |
 | Docker orchestration | `docker-compose.yml` |
 | Test dataset | `scripts/seed-test-data.sql` |
 
@@ -405,6 +472,14 @@ cd frontend
 bun install                               # install dependencies
 bun run dev                               # dev server (port 5173, proxies /api to :8080)
 bun run build                             # production build → dist/
+
+# MCP Server
+cd mcp_server
+BACKEND_URL=http://localhost:8080 python server.py    # start MCP server (port 8000)
+
+# Agent
+cd agent
+GOOGLE_API_KEY=... MCP_URL=http://localhost:8000/mcp adk web quotation_agent  # ADK web UI
 ```
 
 ### Common Modification Scenarios

@@ -12,6 +12,7 @@ import QuotationDetailPage from './pages/QuotationDetailPage';
 import OrderListPage from './pages/OrderListPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import OrderFormPage from './pages/OrderFormPage';
+import AgentChatPage from './pages/AgentChatPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,6 +43,7 @@ export default function App() {
             <Route path="/orders" element={<OrderListPage />} />
             <Route path="/orders/new" element={<OrderFormPage />} />
             <Route path="/orders/:id" element={<OrderDetailPage />} />
+            <Route path="/agent" element={<AgentChatPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

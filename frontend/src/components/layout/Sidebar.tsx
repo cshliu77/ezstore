@@ -6,6 +6,7 @@ const navItems = [
   { to: '/products', label: '產品管理', icon: '📦' },
   { to: '/quotations', label: '報價單管理', icon: '📋' },
   { to: '/orders', label: '訂單管理', icon: '🛒' },
+  { to: '/agent', label: '智能助理', icon: '🤖' },
 ];
 
 export default function Sidebar() {
