@@ -8,3 +8,10 @@ services:
     image: ezstore-frontend:local
     pull_policy: never
     build: ./frontend
+
+  e2e:
+    image: ezstore-e2e:local
+    pull_policy: never
+    build:
+      context: ./frontend
+      dockerfile: e2e/Dockerfile

@@ -40,5 +40,16 @@ services:
     depends_on:
       - backend
 
+  e2e:
+    image: ghcr.io/cshliu77/ezstore/e2e:latest
+    pull_policy: always
+    environment:
+      BASE_URL: http://frontend:80
+      API_URL: http://backend:8080
+    depends_on:
+      - frontend
+    profiles:
+      - test
+
 volumes:
   pgdata:

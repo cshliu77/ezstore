@@ -154,6 +154,13 @@ docker compose exec db psql -U ezstore -f /scripts/seed-test-data.sql
 | Swagger UI | http://localhost:8080/swagger/index.html |
 | Health Check | http://localhost:8080/health |
 
+**Run E2E tests (verify the deployment is working):**
+
+```bash
+docker compose exec db psql -U ezstore -f /scripts/seed-test-data.sql
+docker compose run --rm e2e
+```
+
 ### Development Mode
 
 ```bash

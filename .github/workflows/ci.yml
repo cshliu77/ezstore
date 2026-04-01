@@ -1,4 +1,4 @@
-name: CI - Build & Push Container Images
+name: CI - Build, Push & Test Container Images
 
 on:
   push:
@@ -21,8 +21,13 @@ jobs:
         include:
           - component: backend
             context: ./backend
+            dockerfile: ./backend/Dockerfile
           - component: frontend
             context: ./frontend
+            dockerfile: ./frontend/Dockerfile
+          - component: e2e
+            context: ./frontend
+            dockerfile: ./frontend/e2e/Dockerfile
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -54,9 +59,54 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'push' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  e2e-test:
+    needs: build-and-push
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Start services
+        run: docker compose up -d db backend frontend
+
+      - name: Wait for backend to be ready
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/health > /dev/null 2>&1; then
+              echo "Backend is ready"
+              exit 0
+            fi
+            echo "Waiting for backend... ($i/30)"
+            sleep 2
+          done
+          echo "Backend failed to start"
+          exit 1
+
+      - name: Load test data
+        run: docker compose exec -T db psql -U ezstore -f /scripts/seed-test-data.sql
+
+      - name: Run E2E tests
+        run: docker compose run --rm e2e
+
+      - name: Stop services
+        if: always()
+        run: docker compose down -v
