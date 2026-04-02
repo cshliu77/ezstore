@@ -22,10 +22,14 @@ Install the following tools (latest versions recommended):
 
 ## 2. Getting Started
 
-### Step 1: Clone the repository
+### Step 0: Fork the repository
+
+Fork this repository on GitHub: https://github.com/cshliu77/ezstore
+
+### Step 1: Clone your forked repository
 
 ```bash
-git clone https://github.com/cshliu77/ezstore.git
+git clone https://github.com/<your-github-username>/ezstore.git
 ```
 
 ### Step 2: Navigate to the project directory
