@@ -92,6 +92,6 @@ Open your browser and navigate to:
 | ADK Docs MCP Server | https://google.github.io/adk-docs/tutorials/coding-with-ai/#adk-docs-mcp-server |
 | Context7 MCP | https://context7.com/docs/resources/all-clients |
 | Playwright-MCP | https://github.com/microsoft/playwright-mcp?tab=readme-ov-file#getting-started |
-| chrome-devtools-mcp | https://github.com/microsoft/playwright-mcp?tab=readme-ov-file#getting-started |
+| chrome-devtools-mcp | https://github.com/ChromeDevTools/chrome-devtools-mcp?tab=readme-ov-file#getting-started |
 
 
