@@ -22,6 +22,8 @@
 2.7.2.mcp_server：放置MCP Server相關的程式碼與設定檔。
 2.8.Agent服務與MCP Server服務各自使用一個Container部署。
 2.9.Google Agent Development Kit (ADK)的LLM選擇使用Gemini 2.5 flash(免費)，透過AI Studio 提供的API key整合到Agent的設定中。
+2.9.1.API Key透過使用者設定在.env檔案中，並且在Docker Compose中設定環境變數，讓Agent Container可以讀取到API Key的值。你要生成.env的範例檔案，引導使用者填入API Key的值。
+2.9.2.確保API Key的安全性，不要將API Key直接寫在程式碼中，必須要透過環境變數的方式來使用API Key。
 2.10.MCP Server提供Streamable HTTP的API，讓Agent可以透過HTTP請求來呼叫MCP Server提供的工具功能。切記不要使用SSE（Server-Sent Events)的方式來實作MCP Server的API，因為SSE已經被MCP標記為deprecated了。
 3.文件需求：
 3.1.更新Readme.md文件，增加Agent與MCP Server相關的說明，包含功能、架構、技術選型、部署方式、測試方式等
