@@ -18,6 +18,7 @@ EZStore 提供四大核心模組，管理 B2B 銷售流程：
 | **產品管理** | 產品資料的 CRUD — 產品編號、名稱、描述、成本、牌價、庫存、供應商 |
 | **報價單管理** | 報價單的建立、修改、發佈、刪除。單價由「報價因子」乘以牌價計算。已發佈的報價單不可再修改。 |
 | **訂單管理** | 訂單的 CRUD — 可選擇關聯已發佈的報價單 |
+| **AI 智能助理** | 自然語言報價單管理助手 — 查詢、複製、調整報價因子/總價、轉為訂單。使用 Google ADK + Gemini 2.5 Flash + MCP Server。 |
 
 ### 技術棧
 
@@ -26,15 +27,25 @@ EZStore 提供四大核心模組，管理 B2B 銷售流程：
 | 後端 | Go 1.25 · Gin · GORM · Swagger (swaggo) · Testify |
 | 前端 | React 19 · TypeScript · Tailwind CSS 4 · Vite 8 · TanStack React Query · React Hook Form · React Router |
 | 資料庫 | PostgreSQL 16 |
+| AI 智能助理 | Python 3.11 · Google ADK 1.22+ · Gemini 2.5 Flash · FastMCP · Streamable HTTP |
 | 編譯部署 | Docker · Docker Compose · Bun（前端）· Nginx（前端服務與 API 反向代理）|
 
 ### 專案目錄結構
 
 ```
 ezstore/
-├── docker-compose.yml          # 整合三個服務的編排檔
+├── docker-compose.yml          # 整合所有服務的編排檔
 ├── scripts/
 │   └── seed-test-data.sql      # 冪等測試資料集（TRUNCATE + INSERT）
+├── agent/
+│   ├── Dockerfile
+│   ├── pyproject.toml           # ADK Agent 依賴
+│   └── quotation_agent/
+│       └── agent.py             # Agent 定義（Gemini 2.5 Flash + MCP 工具）
+├── mcp_server/
+│   ├── Dockerfile
+│   ├── pyproject.toml           # MCP Server 依賴
+│   └── server.py                # FastMCP Server，6 個報價單工具
 ├── backend/
 │   ├── Dockerfile
 │   ├── main.go                 # 入口 — Gin + GORM + Swagger 初始化
@@ -128,6 +139,12 @@ swag --version            # swag version v1.x+
 ```
 
 ### 快速開始（Docker Compose）
+
+**環境變數（AI 智能助理必要）：**
+
+```bash
+export GOOGLE_API_KEY=your-google-ai-studio-api-key
+```
 
 **方式 A — 使用 GHCR 雲端預建 image（預設，免編譯）：**
 
@@ -236,6 +253,52 @@ $(go env GOPATH)/bin/swag init -g main.go --parseDependency --parseInternal
 - 不可修改（HTTP 403）
 - 不可刪除（HTTP 403）
 - 不可重複發佈（HTTP 400）
+
+### AI 智能助理
+
+EZStore 內建自然語言報價單管理助手，採用 Google ADK 搭配 Gemini 2.5 Flash。
+
+**架構：**
+
+```
+使用者 → React Chat UI → ADK API Server (Agent) → MCP Server → Backend REST API
+                              ↑                        ↑
+                         Gemini 2.5 Flash         Streamable HTTP
+                         (AI Studio API key)      (FastMCP)
+```
+
+**功能：**
+
+| 操作 | 說明 |
+|------|------|
+| 查詢報價單 | 根據報價單編號查詢詳細資訊 |
+| 查詢客戶報價單 | 根據客戶名稱列出所有報價單 |
+| 複製報價單 | 建立新的草稿副本 |
+| 修改報價因子 | 先複製再修改報價因子（原始不變） |
+| 修改總價 | 先複製再以二分法調整報價因子達到目標總價（原始不變） |
+| 報價單轉訂單 | 發佈報價單並建立對應訂單 |
+
+**設計原則：**
+- 所有修改採用 **copy-on-write** — 原始報價單永遠不會被直接更動
+- 所有回覆包含 **可點擊的系統連結** 直接查看報價單/訂單
+- Agent **拒絕非報價單相關的請求**，專注在報價單管理
+
+**本機開發：**
+
+```bash
+# MCP Server
+cd mcp_server
+uv venv && source .venv/bin/activate
+uv pip install -r pyproject.toml
+BACKEND_URL=http://localhost:8080 python server.py
+
+# Agent（另開終端）
+cd agent
+uv venv && source .venv/bin/activate
+uv pip install -r pyproject.toml
+export GOOGLE_API_KEY=your-key
+MCP_URL=http://localhost:8000/mcp adk web quotation_agent
+```
 
 ### 授權
 

@@ -2,6 +2,10 @@
 node_modules/
 vendor/
 
+# Python
+__pycache__/
+*.pyc
+
 # Build outputs
 backend/ezstore-api
 frontend/dist/
