@@ -133,7 +133,12 @@ cd agent && agents-cli eval run
 
 ### Step 9: Agent 可信賴度評鑑 LAB
 
-Agent 做完之後，照著 [eval-lab.md](eval-lab.md) 用 `agents-cli eval` 評鑑它：讀報告、加考題、比較兩次結果、做破壞測試，最後寫一份可信賴度報告。
+Agent 做完之後，用 `agents-cli eval` 評鑑它。有兩個版本：
+
+| 版本 | 檔案 | 時間 | 內容 |
+|---|---|---|---|
+| 課堂版 | [eval-lab-quick.md](eval-lab-quick.md) | 25 分鐘 | 跑一組考題、讀逐題理由、加一題發現評分規則的盲點、破壞測試 |
+| 完整版（回家做） | [eval-lab.md](eval-lab.md) | 60–90 分鐘 | 修評分規則、跑會改資料的操作類考題、穩定性比對、自己寫多輪案例、寫一頁可信賴度報告 |
 
 **前置條件**
 
@@ -141,4 +146,4 @@ Agent 做完之後，照著 [eval-lab.md](eval-lab.md) 用 `agents-cli eval` 評
 - `agent/.env` 已設定憑證（AI Studio 的 `GEMINI_API_KEY`，或 Vertex AI 的 `GOOGLE_GENAI_USE_VERTEXAI=true` + `GOOGLE_CLOUD_PROJECT`），且 `MCP_URL=http://localhost:8010/mcp`。
 - 在 `agent/` 目錄執行過 `uv sync --group dev --extra eval`。
 
-**預計時間**：60 到 90 分鐘。評鑑會呼叫 Gemini 約 40 到 60 次，AI Studio 免費方案足夠。
+**費用**：課堂版呼叫 Gemini 約 15 次，完整版約 40 到 60 次，AI Studio 免費方案都足夠。

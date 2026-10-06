@@ -1,8 +1,10 @@
-# Agent 可信賴度評鑑 LAB（agents-cli eval）
+# Agent 可信賴度評鑑 LAB — 完整版（課後，60–90 分鐘）
 
 > 接在「開發 ADK Agent」之後。你已經有一個會動的報價單 Agent，這份 LAB 教你用 `agents-cli eval` 回答一個主管一定會問的問題：**這個 Agent 到底可不可以信？**
 >
-> 預計 60–90 分鐘。不需要寫程式；需要改檔案的地方，都可以請你的 AI coding 工具（Claude Code、Antigravity、Codex）代勞，教材會給你可以直接貼的指令。
+> 課堂上做過 [eval-lab-quick.md](eval-lab-quick.md)（25 分鐘版）的話，第 1–3 節與第 5 節前半、第 7 節都是複習，可以快速帶過，重點放在第 5 節的修規則、第 4、6、8、9 節。
+>
+> 不需要寫程式；需要改檔案的地方，都可以請你的 AI coding 工具（Claude Code、Antigravity、Codex）代勞，教材會給你可以直接貼的指令。
 
 ---
 

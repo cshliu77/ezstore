@@ -324,7 +324,7 @@ agents-cli eval run --dataset tests/eval/datasets/quotation-actions.json    # 6 
 agents-cli eval run --dataset tests/eval/datasets/quotation-guardrails.json # 2 refusals + 1 multi-turn clarification
 ```
 
-Step-by-step trustworthiness evaluation lab for learners: [eval-lab.md](eval-lab.md).
+Trustworthiness evaluation labs for learners: [eval-lab-quick.md](eval-lab-quick.md) (25 min, in class) and [eval-lab.md](eval-lab.md) (60–90 min, full version).
 
 ### License
 
