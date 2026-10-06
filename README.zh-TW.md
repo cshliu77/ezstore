@@ -316,7 +316,7 @@ agents-cli eval run --dataset tests/eval/datasets/quotation-actions.json     # 6
 agents-cli eval run --dataset tests/eval/datasets/quotation-guardrails.json  # 2 個拒答 + 1 個多輪追問
 ```
 
-學員用的可信賴度評鑑 LAB：[eval-lab.md](eval-lab.md)。
+學員用的可信賴度評鑑 LAB：課堂版 [eval-lab-quick.md](eval-lab-quick.md)（25 分鐘）、完整版 [eval-lab.md](eval-lab.md)（60–90 分鐘，回家做）。
 
 ### 授權
 
