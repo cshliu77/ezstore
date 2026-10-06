@@ -136,3 +136,11 @@ cd agent && agents-cli eval run
 ### Step 9: Agent 可信賴度評鑑 LAB
 
 Agent 做完之後，照著 [eval-lab.md](eval-lab.md) 用 `agents-cli eval` 評鑑它：讀報告、加考題、比較兩次結果、做破壞測試，最後寫一份可信賴度報告。
+
+**前置條件**
+
+- Step 7 的 Agent 已完成，`docker compose ps` 看到 db、backend、mcp-server、agent、frontend 都在跑，測試資料已灌入（Step 5）。
+- `agent/.env` 已設定憑證（AI Studio 的 `GEMINI_API_KEY`，或 Vertex AI 的 `GOOGLE_GENAI_USE_VERTEXAI=true` + `GOOGLE_CLOUD_PROJECT`），且 `MCP_URL=http://localhost:8010/mcp`。
+- 在 `agent/` 目錄執行過 `uv sync --group dev --extra eval`。
+
+**預計時間**：60 到 90 分鐘。評鑑會呼叫 Gemini 約 40 到 60 次，AI Studio 免費方案足夠。
