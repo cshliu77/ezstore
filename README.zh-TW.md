@@ -316,6 +316,8 @@ agents-cli eval run --dataset tests/eval/datasets/quotation-actions.json     # 6
 agents-cli eval run --dataset tests/eval/datasets/quotation-guardrails.json  # 2 個拒答 + 1 個多輪追問
 ```
 
+學員用的可信賴度評鑑 LAB：[eval-lab.md](eval-lab.md)。
+
 ### 授權
 
 本專案採用 [MIT License](LICENSE) 開源授權。

@@ -132,3 +132,7 @@ cd agent && uv sync --group dev && uv run pytest tests/unit tests/integration -q
 # Agent 評估（需要 API key、後端與 MCP Server 都在執行）
 cd agent && agents-cli eval run
 ```
+
+### Step 9: Agent 可信賴度評鑑 LAB
+
+Agent 做完之後，照著 [eval-lab.md](eval-lab.md) 用 `agents-cli eval` 評鑑它：讀報告、加考題、比較兩次結果、做破壞測試，最後寫一份可信賴度報告。

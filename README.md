@@ -316,6 +316,8 @@ agents-cli eval run --dataset tests/eval/datasets/quotation-actions.json    # 6 
 agents-cli eval run --dataset tests/eval/datasets/quotation-guardrails.json # 2 refusals + 1 multi-turn clarification
 ```
 
+Step-by-step trustworthiness evaluation lab for learners: [eval-lab.md](eval-lab.md).
+
 ### License
 
 This project is licensed under the [MIT License](LICENSE).

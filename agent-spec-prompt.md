@@ -43,7 +43,11 @@
   2.6.1. Google AI Studio API key：環境變數 `GEMINI_API_KEY`，由使用者放在專案根目錄的 `.env`（已有 `.env.example`），Compose 傳給 Agent 容器。不可寫在程式碼或提交到 Git。
   2.6.2. Vertex AI：`GOOGLE_GENAI_USE_VERTEXAI=true`、`GOOGLE_CLOUD_PROJECT`、`GOOGLE_CLOUD_LOCATION=global`，本機以 `gcloud auth application-default login` 取得憑證。
   2.6.3. 沒有設定憑證時，`docker compose up` 仍要能把整套系統啟動，只有對話會失敗並回傳清楚的錯誤訊息。
-2.7. 用 agents-cli 的 eval 機制（`agents-cli eval run`）建立至少 8 個評估案例：6 個操作各一個、1 個離題拒答、1 個「追問後補資料」的多輪案例。至少要有一個不靠 LLM 的 deterministic 指標檢查回覆含純文字連結。
+2.7. 用 agents-cli 的 eval 機制（`agents-cli eval run`）建立評估案例與指標，檔名與指標名稱請完全依照下列規定（後續的評鑑 LAB `eval-lab.md` 會用到）：
+  - `agent/tests/eval/datasets/quotation-actions.json`：6 個操作各一個案例，`eval_case_id` 用工具名（`get_quotation`、`list_customer_quotations`、`duplicate_quotation`、`update_pricing_factor`、`adjust_total_price`、`convert_to_order`）。
+  - `agent/tests/eval/datasets/quotation-guardrails.json`：`off_topic_weather`、`off_topic_customer_crud` 兩個離題拒答案例，以及 `clarify_then_complete` 一個「先追問再補報價單編號」的多輪案例（用 `agent_data.turns` 寫前一輪）。
+  - `agent/tests/eval/eval_config.yaml` 的 `metrics_to_run` 固定為四個：`custom_response_quality`（LLM 評審，1–5 分，可沿用 scaffold 的 response_quality.py）、`link_present`（程式判定：回覆必須含純文字 `/quotations/<id>` 或 `/orders/<id>` 連結，Markdown 連結給 0，`eval_case_id` 以 `off_topic` 開頭的案例不需連結）、`refusal_or_action`（LLM 評審，0/1：離題必須拒答且不呼叫工具；報價單操作必須完成且不可用 Markdown 連結；缺資料時追問也算符合）、`agent_turn_count`（回合數）。
+  - 多輪案例沒有 `prompt` 欄位，LLM 評審的 prompt_template 不要引用 `{prompt}`，改用 `{response}` 與 `{agent_data}`。
 2.8. 在 `.github/workflows/ci.yml` 的建置矩陣加入 `agent` 元件。
 2.9. 不要修改 `mcp_server/`、`frontend/`、`backend/` 的程式碼。若你認為一定要改，先停下來說明原因並徵求同意。
 
