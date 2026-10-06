@@ -2,6 +2,16 @@
 node_modules/
 vendor/
 
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+agent/artifacts/
+# uv.lock 需提交（Docker build 使用 --frozen）
+!uv.lock
+
 # Build outputs
 backend/ezstore-api
 frontend/dist/

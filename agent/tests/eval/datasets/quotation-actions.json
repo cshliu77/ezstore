@@ -1,0 +1,34 @@
+{
+  "eval_cases": [
+    {
+      "eval_case_id": "get_quotation",
+      "prompt": {"role": "user", "parts": [{"text": "我要查詢報價單，報價單編號：QT-20260330-001"}]},
+      "reference": {"response": {"role": "model", "parts": [{"text": "回覆包含報價單 QT-20260330-001 的客戶、報價因子、總價、狀態與品項清單，並附上 http://localhost:3000/quotations/<id> 的純文字連結。"}]}}
+    },
+    {
+      "eval_case_id": "list_customer_quotations",
+      "prompt": {"role": "user", "parts": [{"text": "我要查詢客戶的報價單清單，客戶名稱：史塔克工業"}]},
+      "reference": {"response": {"role": "model", "parts": [{"text": "回覆列出史塔克工業的所有報價單，每一筆都有報價單編號、總價、狀態與純文字系統連結。"}]}}
+    },
+    {
+      "eval_case_id": "duplicate_quotation",
+      "prompt": {"role": "user", "parts": [{"text": "我要複製報價單，報價單編號：QT-20260330-001"}]},
+      "reference": {"response": {"role": "model", "parts": [{"text": "回覆說明已複製，列出原始報價單編號與新產生的報價單編號，兩者都附純文字系統連結。"}]}}
+    },
+    {
+      "eval_case_id": "update_pricing_factor",
+      "prompt": {"role": "user", "parts": [{"text": "我要修改報價單報價因子，報價單編號：QT-20260330-001，報價因子改為1.5"}]},
+      "reference": {"response": {"role": "model", "parts": [{"text": "回覆說明原始報價單未修改，新報價單的報價因子為 1.5，並附新報價單的純文字系統連結。"}]}}
+    },
+    {
+      "eval_case_id": "adjust_total_price",
+      "prompt": {"role": "user", "parts": [{"text": "我要修改報價單總價，報價單編號：QT-20260330-001，總價改為100000"}]},
+      "reference": {"response": {"role": "model", "parts": [{"text": "回覆說明已用二分法調整報價因子，列出目標總價 100000 與實際總價，原始報價單未修改，並附新報價單的純文字系統連結。"}]}}
+    },
+    {
+      "eval_case_id": "convert_to_order",
+      "prompt": {"role": "user", "parts": [{"text": "我要將報價單轉訂單，報價單編號：QT-20260330-001"}]},
+      "reference": {"response": {"role": "model", "parts": [{"text": "回覆列出新建立的訂單編號與訂單總價，並附 http://localhost:3000/orders/<id> 的純文字連結。"}]}}
+    }
+  ]
+}

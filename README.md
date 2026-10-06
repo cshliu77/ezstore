@@ -18,6 +18,7 @@ EZStore provides four core modules for managing the B2B sales pipeline:
 | **Product Management** | CRUD for products — product number, name, description, cost, list price, inventory, supplier |
 | **Quotation Management** | Create, edit, publish, and delete quotations. Pricing is computed from a *pricing factor* applied to list prices. Published quotations become immutable. |
 | **Order Management** | CRUD for orders — optionally linked to a published quotation |
+| **AI Agent** | Natural language quotation assistant — query, duplicate, adjust pricing factor/total price, convert to order. Google ADK 2.x graph Workflow + Gemini 3.8 Flash + MCP Server, scaffolded with google-agents-cli. |
 
 ### Tech Stack
 
@@ -26,15 +27,33 @@ EZStore provides four core modules for managing the B2B sales pipeline:
 | Backend | Go 1.25 · Gin · GORM · Swagger (swaggo) · Testify |
 | Frontend | React 19 · TypeScript · Tailwind CSS 4 · Vite 8 · TanStack React Query · React Hook Form · React Router |
 | Database | PostgreSQL 16 |
+| AI Agent | Python 3.12 · Google ADK 2.10+ (graph Workflow API) · google-agents-cli 1.7 · Gemini 3.8 Flash · MCP Python SDK 2.x (Streamable HTTP) · uv |
 | Build & Deploy | Docker · Docker Compose · Bun (frontend) · Nginx (frontend serving & API proxy) |
 
 ### Project Structure
 
 ```
 ezstore/
-├── docker-compose.yml          # Orchestrates all three services
+├── docker-compose.yml          # Orchestrates all services
 ├── scripts/
 │   └── seed-test-data.sql      # Idempotent test dataset (TRUNCATE + INSERT)
+├── .env.example                # GEMINI_API_KEY and agent settings (copy to .env)
+├── agent/                      # scaffolded by `agents-cli scaffold create`
+│   ├── Dockerfile
+│   ├── pyproject.toml           # google-adk[mcp,a2a]>=2.10 (+ uv.lock)
+│   ├── agents-cli-manifest.yaml
+│   ├── quotation_agent/
+│   │   ├── agent.py             # graph Workflow: classify → route → MCP tool nodes → respond
+│   │   ├── prompts.py           # intent-classifier instruction, fixed replies
+│   │   └── fast_api_app.py      # FastAPI app (ADK /run_sse + sessions + A2A)
+│   └── tests/
+│       ├── unit/                # pure node tests (no LLM, no MCP)
+│       ├── integration/         # offline graph tests (needs MCP) + LLM tests (needs key)
+│       └── eval/                # agents-cli eval datasets + metrics
+├── mcp_server/
+│   ├── Dockerfile
+│   ├── pyproject.toml           # mcp>=2.2, httpx (+ uv.lock)
+│   └── server.py                # MCPServer (Streamable HTTP) with 6 quotation tools
 ├── backend/
 │   ├── Dockerfile
 │   ├── main.go                 # Entry point — Gin + GORM + Swagger init
@@ -128,6 +147,12 @@ swag --version            # swag version v1.x+
 ```
 
 ### Quick Start (Docker Compose)
+
+**API key (required for the AI Agent, everything else runs without it):**
+
+```bash
+cp .env.example .env      # then fill in GEMINI_API_KEY from https://aistudio.google.com/apikey
+```
 
 **Option A — Use pre-built images from GHCR (default, no build required):**
 
@@ -237,6 +262,68 @@ profit_rate  = profit ÷ total_price
 - It cannot be deleted (HTTP 403)
 - It cannot be published again (HTTP 400)
 
+### AI Agent
+
+EZStore includes a natural-language quotation assistant built with Google ADK 2.x. The agent is a **graph Workflow**: only one node calls the LLM (intent classification); tool selection, argument passing, clarification and refusal are all deterministic program logic.
+
+**Architecture:**
+
+```
+User → React Chat UI → nginx /agent-api → Agent (ADK FastAPI, port 8080) → MCP Server (port 8000) → Backend REST API
+                                               │                                  Streamable HTTP
+                                          Gemini 3.8 Flash                        (mcp Python SDK 2.x)
+                                        (AI Studio API key)
+
+Workflow graph (agent/quotation_agent/agent.py):
+
+  START → load_context → classify_intent (LLM, output_schema=Intent) → route
+            ├─ get_quotation / list_customer_quotations / duplicate_quotation
+            ├─ update_pricing_factor / adjust_total_price / convert_to_order    ← each calls one MCP tool
+            ├─ clarify     (missing fields → ask, keep state.pending_intent)
+            └─ off_topic   (fixed refusal, decided by code)
+          all → respond    (emit text + update state.chat_history)
+```
+
+Every user message re-runs the graph from `START`; cross-turn memory lives in session state (`chat_history`, `pending_intent`), so a user can answer a clarification question in the next message.
+
+**Capabilities:**
+
+| Operation | Description |
+|-----------|-------------|
+| Query quotation | Look up quotation details by quotation number (uses `GET /quotations?quotation_number=`) |
+| List customer quotations | List all quotations for a given customer name |
+| Duplicate quotation | Create a new draft copy of a quotation |
+| Modify pricing factor | Duplicate first, then update the pricing factor on the copy |
+| Modify total price | Duplicate first, then binary-search the pricing factor (≤ 20 iterations) to reach a target total |
+| Convert to order | Create an order from the quotation's customer and items, linked via `quotation_id`; the quotation itself is untouched |
+
+**Key design:**
+- All modifications use **copy-on-write** — the original quotation is never changed
+- All responses include **plain-text system links** to the quotation/order detail pages
+- Off-topic requests are **refused by code**, missing fields trigger a **clarification turn**
+- Agent runs even without an API key (chat returns a clear error), so `docker compose up` never fails on a missing key
+
+**Local development:**
+
+```bash
+# MCP Server (port 8010 to avoid clashing with other local services)
+cd mcp_server && uv sync
+BACKEND_URL=http://localhost:8080 MCP_PORT=8010 uv run python server.py
+
+# Agent (in another terminal)
+cd agent && cp .env.example .env    # fill GEMINI_API_KEY, set MCP_URL=http://localhost:8010/mcp
+                                    # or Vertex AI: GOOGLE_GENAI_USE_VERTEXAI=true + GOOGLE_CLOUD_PROJECT after `gcloud auth application-default login`
+uv sync --group dev
+agents-cli playground               # web UI
+agents-cli run "我要查詢報價單，報價單編號：QT-20260330-001"
+
+# Tests
+uv run pytest tests/unit -q                       # no LLM, no MCP
+MCP_URL=http://localhost:8010/mcp uv run pytest tests/integration -q   # offline graph tests (+ LLM tests when key is set)
+agents-cli eval run --dataset tests/eval/datasets/quotation-actions.json    # 6 action cases (creates data; reseed before rerun)
+agents-cli eval run --dataset tests/eval/datasets/quotation-guardrails.json # 2 refusals + 1 multi-turn clarification
+```
+
 ### License
 
 This project is licensed under the [MIT License](LICENSE).
@@ -251,9 +338,9 @@ This project is licensed under the [MIT License](LICENSE).
 
 - **Name:** EZStore
 - **Purpose:** B2B quotation and order management system
-- **Language:** Go (backend), TypeScript/React (frontend)
+- **Language:** Go (backend), TypeScript/React (frontend), Python 3.12 (agent + MCP server)
 - **Database:** PostgreSQL 16
-- **Deployment:** Docker Compose (3 services: db, backend, frontend)
+- **Deployment:** Docker Compose (5 services: db, backend, frontend, agent, mcp-server)
 
 ### Architecture Pattern
 
@@ -288,6 +375,13 @@ HTTP Request → Handler (Gin) → Service (business logic) → Repository (GORM
 | API clients | `frontend/src/api/*.ts` |
 | Page components | `frontend/src/pages/*.tsx` |
 | Shared components | `frontend/src/components/shared/*.tsx` |
+| Agent workflow graph | `agent/quotation_agent/agent.py` (`Workflow`, `Intent`, node functions) |
+| Agent prompts / fixed replies | `agent/quotation_agent/prompts.py` |
+| Agent FastAPI app | `agent/quotation_agent/fast_api_app.py` |
+| Agent eval | `agent/tests/eval/eval_config.yaml`, `agent/tests/eval/datasets/*.json` |
+| MCP Server (6 tools, mcp 2.x `MCPServer`) | `mcp_server/server.py` |
+| Agent Chat UI | `frontend/src/pages/AgentChatPage.tsx` |
+| Agent API client | `frontend/src/api/agentApi.ts` |
 | Docker orchestration | `docker-compose.yml` |
 | Test dataset | `scripts/seed-test-data.sql` |
 
@@ -344,7 +438,7 @@ PUT    /api/v1/products/:id
 DELETE /api/v1/products/:id           → soft delete
 
 # Quotations
-GET    /api/v1/quotations             → paginated list (?page, ?page_size, ?status, ?customer_id)
+GET    /api/v1/quotations             → paginated list (?page, ?page_size, ?status, ?customer_id, ?quotation_number)
 GET    /api/v1/quotations/:id         → includes items[] and customer
 POST   /api/v1/quotations             → body: { customer_id, pricing_factor, notes, items: [{product_id, quantity}] }
 PUT    /api/v1/quotations/:id         → draft only; same body as POST
@@ -405,6 +499,18 @@ cd frontend
 bun install                               # install dependencies
 bun run dev                               # dev server (port 5173, proxies /api to :8080)
 bun run build                             # production build → dist/
+
+# MCP Server
+cd mcp_server
+uv sync && BACKEND_URL=http://localhost:8080 MCP_PORT=8010 uv run python server.py
+
+# Agent (reads agent/.env: GEMINI_API_KEY, MCP_URL, AGENT_MODEL)
+cd agent
+uv sync --group dev
+agents-cli playground                     # local web UI
+agents-cli run "我要查詢報價單，報價單編號：QT-20260330-001"
+uv run pytest tests/unit tests/integration -q
+agents-cli eval run                       # LLM-judged eval over tests/eval/datasets
 ```
 
 ### Common Modification Scenarios

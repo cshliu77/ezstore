@@ -32,14 +32,14 @@ func NewQuotationService(repo *repositories.QuotationRepository, customerRepo *r
 	return &QuotationService{Repo: repo, CustomerRepo: customerRepo, ProductRepo: productRepo}
 }
 
-func (s *QuotationService) List(page, pageSize int, status string, customerID uint) ([]models.Quotation, int64, error) {
+func (s *QuotationService) List(page, pageSize int, status string, customerID uint, quotationNumber string) ([]models.Quotation, int64, error) {
 	if page < 1 {
 		page = 1
 	}
 	if pageSize < 1 || pageSize > 100 {
 		pageSize = 20
 	}
-	return s.Repo.List(page, pageSize, status, customerID)
+	return s.Repo.List(page, pageSize, status, customerID, quotationNumber)
 }
 
 func (s *QuotationService) GetByID(id uint) (*models.Quotation, error) {

@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright:v1.59.0-noble
+FROM mcr.microsoft.com/playwright:v1.63.0-noble
 WORKDIR /app
 COPY package.json bun.lock ./
 RUN npm install --save-dev @playwright/test

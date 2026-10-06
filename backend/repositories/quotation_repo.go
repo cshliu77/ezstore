@@ -13,7 +13,7 @@ func NewQuotationRepository(db *gorm.DB) *QuotationRepository {
 	return &QuotationRepository{DB: db}
 }
 
-func (r *QuotationRepository) List(page, pageSize int, status string, customerID uint) ([]models.Quotation, int64, error) {
+func (r *QuotationRepository) List(page, pageSize int, status string, customerID uint, quotationNumber string) ([]models.Quotation, int64, error) {
 	var quotations []models.Quotation
 	var total int64
 
@@ -23,6 +23,9 @@ func (r *QuotationRepository) List(page, pageSize int, status string, customerID
 	}
 	if customerID > 0 {
 		query = query.Where("customer_id = ?", customerID)
+	}
+	if quotationNumber != "" {
+		query = query.Where("quotation_number = ?", quotationNumber)
 	}
 
 	if err := query.Count(&total).Error; err != nil {

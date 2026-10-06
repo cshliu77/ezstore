@@ -711,7 +711,7 @@
         },
         "/api/v1/quotations": {
             "get": {
-                "description": "取得報價單列表，支援分頁、狀態篩選與客戶篩選。狀態可為 draft（草稿）或 published（已發佈）。",
+                "description": "取得報價單列表，支援分頁、狀態篩選、客戶篩選與報價單編號精確查詢。狀態可為 draft（草稿）或 published（已發佈）。",
                 "consumes": [
                     "application/json"
                 ],
@@ -747,6 +747,12 @@
                         "type": "integer",
                         "description": "客戶 ID 篩選",
                         "name": "customer_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "報價單編號（精確比對，例如 QT-20260330-001）",
+                        "name": "quotation_number",
                         "in": "query"
                     }
                 ],
@@ -933,6 +939,52 @@
                 }
             }
         },
+        "/api/v1/quotations/{id}/duplicate": {
+            "post": {
+                "description": "從任何報價單（含已發佈）複製一張新的草稿報價單。新報價單會保留原報價單的客戶、報價因子與產品明細，並重新查詢最新的產品資料快照、重新計算所有金額。新報價單的狀態固定為 draft。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "quotations"
+                ],
+                "summary": "複製報價單",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "來源報價單 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.Quotation"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/quotations/{id}/publish": {
             "post": {
                 "description": "將報價單狀態從草稿（draft）變更為已發佈（published）。已發佈的報價單不可再修改或刪除。此操作不可逆。",
@@ -1001,13 +1053,13 @@
                 "contact_phone": {
                     "type": "string"
                 },
-                "createdAt": {
+                "created_at": {
                     "type": "string"
                 },
                 "credit_score": {
                     "type": "integer"
                 },
-                "deletedAt": {
+                "deleted_at": {
                     "$ref": "#/definitions/gorm.DeletedAt"
                 },
                 "id": {
@@ -1022,7 +1074,7 @@
                 "tax_id": {
                     "type": "string"
                 },
-                "updatedAt": {
+                "updated_at": {
                     "type": "string"
                 }
             }
@@ -1030,7 +1082,7 @@
         "models.Order": {
             "type": "object",
             "properties": {
-                "createdAt": {
+                "created_at": {
                     "type": "string"
                 },
                 "customer": {
@@ -1039,7 +1091,7 @@
                 "customer_id": {
                     "type": "integer"
                 },
-                "deletedAt": {
+                "deleted_at": {
                     "$ref": "#/definitions/gorm.DeletedAt"
                 },
                 "id": {
@@ -1069,7 +1121,7 @@
                 "total_price": {
                     "type": "number"
                 },
-                "updatedAt": {
+                "updated_at": {
                     "type": "string"
                 }
             }
@@ -1077,10 +1129,10 @@
         "models.OrderItem": {
             "type": "object",
             "properties": {
-                "createdAt": {
+                "created_at": {
                     "type": "string"
                 },
-                "deletedAt": {
+                "deleted_at": {
                     "$ref": "#/definitions/gorm.DeletedAt"
                 },
                 "id": {
@@ -1104,7 +1156,7 @@
                 "unit_price": {
                     "type": "number"
                 },
-                "updatedAt": {
+                "updated_at": {
                     "type": "string"
                 }
             }
@@ -1115,10 +1167,10 @@
                 "cost": {
                     "type": "number"
                 },
-                "createdAt": {
+                "created_at": {
                     "type": "string"
                 },
-                "deletedAt": {
+                "deleted_at": {
                     "$ref": "#/definitions/gorm.DeletedAt"
                 },
                 "description": {
@@ -1142,7 +1194,7 @@
                 "supplier": {
                     "type": "string"
                 },
-                "updatedAt": {
+                "updated_at": {
                     "type": "string"
                 }
             }
@@ -1150,7 +1202,7 @@
         "models.Quotation": {
             "type": "object",
             "properties": {
-                "createdAt": {
+                "created_at": {
                     "type": "string"
                 },
                 "customer": {
@@ -1162,7 +1214,7 @@
                 "customer_level": {
                     "type": "string"
                 },
-                "deletedAt": {
+                "deleted_at": {
                     "$ref": "#/definitions/gorm.DeletedAt"
                 },
                 "id": {
@@ -1195,7 +1247,7 @@
                 "total_price": {
                     "type": "number"
                 },
-                "updatedAt": {
+                "updated_at": {
                     "type": "string"
                 }
             }
@@ -1203,10 +1255,10 @@
         "models.QuotationItem": {
             "type": "object",
             "properties": {
-                "createdAt": {
+                "created_at": {
                     "type": "string"
                 },
-                "deletedAt": {
+                "deleted_at": {
                     "$ref": "#/definitions/gorm.DeletedAt"
                 },
                 "id": {
@@ -1236,7 +1288,7 @@
                 "unit_price": {
                     "type": "number"
                 },
-                "updatedAt": {
+                "updated_at": {
                     "type": "string"
                 }
             }
