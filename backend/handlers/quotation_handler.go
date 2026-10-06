@@ -19,7 +19,7 @@ func NewQuotationHandler(service *services.QuotationService) *QuotationHandler {
 
 // List godoc
 // @Summary      列出報價單
-// @Description  取得報價單列表，支援分頁、狀態篩選與客戶篩選。狀態可為 draft（草稿）或 published（已發佈）。
+// @Description  取得報價單列表，支援分頁、狀態篩選、客戶篩選與報價單編號精確查詢。狀態可為 draft（草稿）或 published（已發佈）。
 // @Tags         quotations
 // @Accept       json
 // @Produce      json
@@ -27,6 +27,7 @@ func NewQuotationHandler(service *services.QuotationService) *QuotationHandler {
 // @Param        page_size    query  int     false  "每頁筆數（預設 20）"   default(20)
 // @Param        status       query  string  false  "狀態篩選（draft/published）"
 // @Param        customer_id  query  int     false  "客戶 ID 篩選"
+// @Param        quotation_number  query  string  false  "報價單編號（精確比對，例如 QT-20260330-001）"
 // @Success      200  {object}  map[string]interface{}
 // @Failure      500  {object}  map[string]interface{}
 // @Router       /api/v1/quotations [get]
@@ -35,8 +36,9 @@ func (h *QuotationHandler) List(c *gin.Context) {
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
 	status := c.Query("status")
 	customerID, _ := strconv.ParseUint(c.Query("customer_id"), 10, 32)
+	quotationNumber := c.Query("quotation_number")
 
-	quotations, total, err := h.Service.List(page, pageSize, status, uint(customerID))
+	quotations, total, err := h.Service.List(page, pageSize, status, uint(customerID), quotationNumber)
 	if err != nil {
 		middleware.ErrorResponse(c, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return

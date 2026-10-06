@@ -18,11 +18,11 @@ definitions:
         type: string
       contact_phone:
         type: string
-      createdAt:
+      created_at:
         type: string
       credit_score:
         type: integer
-      deletedAt:
+      deleted_at:
         $ref: '#/definitions/gorm.DeletedAt'
       id:
         type: integer
@@ -32,18 +32,18 @@ definitions:
         type: string
       tax_id:
         type: string
-      updatedAt:
+      updated_at:
         type: string
     type: object
   models.Order:
     properties:
-      createdAt:
+      created_at:
         type: string
       customer:
         $ref: '#/definitions/models.Customer'
       customer_id:
         type: integer
-      deletedAt:
+      deleted_at:
         $ref: '#/definitions/gorm.DeletedAt'
       id:
         type: integer
@@ -63,14 +63,14 @@ definitions:
         type: string
       total_price:
         type: number
-      updatedAt:
+      updated_at:
         type: string
     type: object
   models.OrderItem:
     properties:
-      createdAt:
+      created_at:
         type: string
-      deletedAt:
+      deleted_at:
         $ref: '#/definitions/gorm.DeletedAt'
       id:
         type: integer
@@ -86,16 +86,16 @@ definitions:
         type: number
       unit_price:
         type: number
-      updatedAt:
+      updated_at:
         type: string
     type: object
   models.Product:
     properties:
       cost:
         type: number
-      createdAt:
+      created_at:
         type: string
-      deletedAt:
+      deleted_at:
         $ref: '#/definitions/gorm.DeletedAt'
       description:
         type: string
@@ -111,12 +111,12 @@ definitions:
         type: string
       supplier:
         type: string
-      updatedAt:
+      updated_at:
         type: string
     type: object
   models.Quotation:
     properties:
-      createdAt:
+      created_at:
         type: string
       customer:
         $ref: '#/definitions/models.Customer'
@@ -124,7 +124,7 @@ definitions:
         type: integer
       customer_level:
         type: string
-      deletedAt:
+      deleted_at:
         $ref: '#/definitions/gorm.DeletedAt'
       id:
         type: integer
@@ -146,14 +146,14 @@ definitions:
         type: string
       total_price:
         type: number
-      updatedAt:
+      updated_at:
         type: string
     type: object
   models.QuotationItem:
     properties:
-      createdAt:
+      created_at:
         type: string
-      deletedAt:
+      deleted_at:
         $ref: '#/definitions/gorm.DeletedAt'
       id:
         type: integer
@@ -173,7 +173,7 @@ definitions:
         type: number
       unit_price:
         type: number
-      updatedAt:
+      updated_at:
         type: string
     type: object
   services.OrderCreateInput:
@@ -721,7 +721,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: 取得報價單列表，支援分頁、狀態篩選與客戶篩選。狀態可為 draft（草稿）或 published（已發佈）。
+      description: 取得報價單列表，支援分頁、狀態篩選、客戶篩選與報價單編號精確查詢。狀態可為 draft（草稿）或 published（已發佈）。
       parameters:
       - default: 1
         description: 頁碼（預設 1）
@@ -741,6 +741,10 @@ paths:
         in: query
         name: customer_id
         type: integer
+      - description: 報價單編號（精確比對，例如 QT-20260330-001）
+        in: query
+        name: quotation_number
+        type: string
       produces:
       - application/json
       responses:
@@ -867,6 +871,38 @@ paths:
             additionalProperties: true
             type: object
       summary: 修改報價單
+      tags:
+      - quotations
+  /api/v1/quotations/{id}/duplicate:
+    post:
+      consumes:
+      - application/json
+      description: 從任何報價單（含已發佈）複製一張新的草稿報價單。新報價單會保留原報價單的客戶、報價因子與產品明細，並重新查詢最新的產品資料快照、重新計算所有金額。新報價單的狀態固定為
+        draft。
+      parameters:
+      - description: 來源報價單 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Quotation'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 複製報價單
       tags:
       - quotations
   /api/v1/quotations/{id}/publish:

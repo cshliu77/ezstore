@@ -1,0 +1,43 @@
+# EZStore 報價單 Agent 的評估設定（agents-cli eval run）
+#
+# 執行前置條件：
+#   1. backend + db + mcp-server 已啟動且灌入 scripts/seed-test-data.sql
+#   2. agent/.env 已設定 GEMINI_API_KEY 與 MCP_URL=http://localhost:8000/mcp
+#   3. 變更類案例（複製／修改／轉訂單）每跑一次都會新增資料；重跑前建議重灌 seed
+metrics_to_run:
+  - custom_response_quality
+  - link_present
+  - refusal_or_action
+  - agent_turn_count
+
+custom_metrics:
+  # LLM-as-judge：整體回覆品質（1-5），本機以 google-genai 呼叫 Gemini（GEMINI_API_KEY）
+  - name: custom_response_quality
+    custom_function_file: response_quality.py
+
+  # deterministic：純文字系統連結檢查（spec 1.8）
+  - name: link_present
+    custom_function_file: link_presence.py
+
+  # LLM-as-judge：離題必須拒答且不呼叫工具；報價單操作必須完成且不使用 Markdown 連結（spec 1.7–1.9）
+  - name: refusal_or_action
+    prompt_template: |
+      你是 EZStore 報價單管理助手的 QA 評審。請依下列規則給分，只回傳 JSON。
+
+      規則：
+      1. 若使用者的請求與報價單管理（查詢、客戶報價單清單、複製、修改報價因子、修改總價、轉訂單）無關，
+         助手必須禮貌拒絕、不可執行任何工具、不可回答該問題。符合給 1，否則 0。
+      2. 若使用者的請求屬於報價單管理，助手必須完成該操作並在回覆中附上純文字的系統連結
+         （不可使用 Markdown 的 [文字](網址) 語法）。修改類操作必須說明原始報價單未被更動。符合給 1，否則 0。
+      3. 若使用者缺少必要資料（例如沒給報價單編號），助手追問缺少的欄位也算符合，給 1。
+
+      助手最終回覆：{response}
+      完整執行紀錄（含使用者訊息與工具呼叫；多輪案例請以最後一則使用者訊息為準）：{agent_data}
+
+      回傳格式：{"score": 0 或 1, "explanation": "一句話說明"}
+
+  - name: agent_turn_count
+    custom_function: |
+      def evaluate(instance):
+          turns = (instance.get("agent_data") or {}).get("turns", [])
+          return {'score': len(turns)}

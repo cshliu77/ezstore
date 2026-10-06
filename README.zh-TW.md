@@ -18,7 +18,7 @@ EZStore 提供四大核心模組，管理 B2B 銷售流程：
 | **產品管理** | 產品資料的 CRUD — 產品編號、名稱、描述、成本、牌價、庫存、供應商 |
 | **報價單管理** | 報價單的建立、修改、發佈、刪除。單價由「報價因子」乘以牌價計算。已發佈的報價單不可再修改。 |
 | **訂單管理** | 訂單的 CRUD — 可選擇關聯已發佈的報價單 |
-| **AI 智能助理** | 自然語言報價單管理助手 — 查詢、複製、調整報價因子/總價、轉為訂單。使用 Google ADK + Gemini 2.5 Flash + MCP Server。 |
+| **AI 智能助理** | 自然語言報價單管理助手 — 查詢、複製、調整報價因子/總價、轉為訂單。Google ADK 2.x Graph Workflow + Gemini 3.8 Flash + MCP Server，以 google-agents-cli 建立骨架。 |
 
 ### 技術棧
 
@@ -27,7 +27,7 @@ EZStore 提供四大核心模組，管理 B2B 銷售流程：
 | 後端 | Go 1.25 · Gin · GORM · Swagger (swaggo) · Testify |
 | 前端 | React 19 · TypeScript · Tailwind CSS 4 · Vite 8 · TanStack React Query · React Hook Form · React Router |
 | 資料庫 | PostgreSQL 16 |
-| AI 智能助理 | Python 3.11 · Google ADK 1.22+ · Gemini 2.5 Flash · FastMCP · Streamable HTTP |
+| AI 智能助理 | Python 3.12 · Google ADK 2.10+（Graph Workflow API）· google-agents-cli 1.7 · Gemini 3.8 Flash · MCP Python SDK 2.x（Streamable HTTP）· uv |
 | 編譯部署 | Docker · Docker Compose · Bun（前端）· Nginx（前端服務與 API 反向代理）|
 
 ### 專案目錄結構
@@ -37,15 +37,23 @@ ezstore/
 ├── docker-compose.yml          # 整合所有服務的編排檔
 ├── scripts/
 │   └── seed-test-data.sql      # 冪等測試資料集（TRUNCATE + INSERT）
-├── agent/
+├── .env.example                # GEMINI_API_KEY 與 Agent 設定（複製為 .env）
+├── agent/                      # 由 `agents-cli scaffold create` 產生
 │   ├── Dockerfile
-│   ├── pyproject.toml           # ADK Agent 依賴
-│   └── quotation_agent/
-│       └── agent.py             # Agent 定義（Gemini 2.5 Flash + MCP 工具）
+│   ├── pyproject.toml           # google-adk[mcp,a2a]>=2.10（含 uv.lock）
+│   ├── agents-cli-manifest.yaml
+│   ├── quotation_agent/
+│   │   ├── agent.py             # Graph Workflow：分類 → 路由 → MCP 工具節點 → 回覆
+│   │   ├── prompts.py           # 意圖分類指令、固定回覆
+│   │   └── fast_api_app.py      # FastAPI 服務（ADK /run_sse + sessions + A2A）
+│   └── tests/
+│       ├── unit/                # 純節點測試（不需 LLM、不需 MCP）
+│       ├── integration/         # 離線圖測試（需 MCP）+ LLM 測試（需金鑰）
+│       └── eval/                # agents-cli eval 資料集與指標
 ├── mcp_server/
 │   ├── Dockerfile
-│   ├── pyproject.toml           # MCP Server 依賴
-│   └── server.py                # FastMCP Server，6 個報價單工具
+│   ├── pyproject.toml           # mcp>=2.2、httpx（含 uv.lock）
+│   └── server.py                # MCPServer（Streamable HTTP），6 個報價單工具
 ├── backend/
 │   ├── Dockerfile
 │   ├── main.go                 # 入口 — Gin + GORM + Swagger 初始化
@@ -140,10 +148,10 @@ swag --version            # swag version v1.x+
 
 ### 快速開始（Docker Compose）
 
-**環境變數（AI 智能助理必要）：**
+**API key（只有 AI 智能助理需要，其他服務沒有也能跑）：**
 
 ```bash
-export GOOGLE_API_KEY=your-google-ai-studio-api-key
+cp .env.example .env      # 再填入 GEMINI_API_KEY，取得方式：https://aistudio.google.com/apikey
 ```
 
 **方式 A — 使用 GHCR 雲端預建 image（預設，免編譯）：**
@@ -256,48 +264,64 @@ $(go env GOPATH)/bin/swag init -g main.go --parseDependency --parseInternal
 
 ### AI 智能助理
 
-EZStore 內建自然語言報價單管理助手，採用 Google ADK 搭配 Gemini 2.5 Flash。
+EZStore 內建自然語言報價單管理助手，以 Google ADK 2.x 開發。Agent 是一張 **Graph Workflow 圖**：只有意圖分類節點會呼叫 LLM，工具選擇、參數傳遞、追問與拒答全部由程式決定。
 
 **架構：**
 
 ```
-使用者 → React Chat UI → ADK API Server (Agent) → MCP Server → Backend REST API
-                              ↑                        ↑
-                         Gemini 2.5 Flash         Streamable HTTP
-                         (AI Studio API key)      (FastMCP)
+使用者 → React Chat UI → nginx /agent-api → Agent（ADK FastAPI，port 8080）→ MCP Server（port 8000）→ Backend REST API
+                                               │                                     Streamable HTTP
+                                          Gemini 3.8 Flash                           （mcp Python SDK 2.x）
+                                        （AI Studio API key）
+
+Workflow 圖（agent/quotation_agent/agent.py）：
+
+  START → load_context → classify_intent（LLM，output_schema=Intent）→ route
+            ├─ get_quotation / list_customer_quotations / duplicate_quotation
+            ├─ update_pricing_factor / adjust_total_price / convert_to_order    ← 各呼叫一個 MCP 工具
+            ├─ clarify    （缺欄位就追問，並把意圖暫存在 state.pending_intent）
+            └─ off_topic  （固定拒答，由程式決定）
+          全部 → respond  （輸出文字、更新 state.chat_history）
 ```
+
+每一則使用者訊息都會從 `START` 重新跑一次圖；跨回合的記憶放在 session state（`chat_history`、`pending_intent`），所以使用者可以在下一句補上被追問的資料。
 
 **功能：**
 
 | 操作 | 說明 |
 |------|------|
-| 查詢報價單 | 根據報價單編號查詢詳細資訊 |
+| 查詢報價單 | 根據報價單編號查詢詳細資訊（使用 `GET /quotations?quotation_number=`） |
 | 查詢客戶報價單 | 根據客戶名稱列出所有報價單 |
 | 複製報價單 | 建立新的草稿副本 |
 | 修改報價因子 | 先複製再修改報價因子（原始不變） |
-| 修改總價 | 先複製再以二分法調整報價因子達到目標總價（原始不變） |
-| 報價單轉訂單 | 發佈報價單並建立對應訂單 |
+| 修改總價 | 先複製再以二分法調整報價因子（最多 20 次）達到目標總價（原始不變） |
+| 報價單轉訂單 | 依報價單的客戶與品項建立訂單並以 `quotation_id` 關聯；報價單本身不動 |
 
 **設計原則：**
 - 所有修改採用 **copy-on-write** — 原始報價單永遠不會被直接更動
-- 所有回覆包含 **可點擊的系統連結** 直接查看報價單/訂單
-- Agent **拒絕非報價單相關的請求**，專注在報價單管理
+- 所有回覆包含 **純文字系統連結**，直接點開報價單／訂單頁
+- 離題請求 **由程式拒答**，缺少必要欄位時 **追問一輪**
+- 沒有 API key 時 Agent 仍會啟動（對話回傳清楚錯誤），`docker compose up` 不會因缺金鑰而失敗
 
 **本機開發：**
 
 ```bash
-# MCP Server
-cd mcp_server
-uv venv && source .venv/bin/activate
-uv pip install -r pyproject.toml
-BACKEND_URL=http://localhost:8080 python server.py
+# MCP Server（用 8010 避免與本機其他服務撞埠）
+cd mcp_server && uv sync
+BACKEND_URL=http://localhost:8080 MCP_PORT=8010 uv run python server.py
 
 # Agent（另開終端）
-cd agent
-uv venv && source .venv/bin/activate
-uv pip install -r pyproject.toml
-export GOOGLE_API_KEY=your-key
-MCP_URL=http://localhost:8000/mcp adk web quotation_agent
+cd agent && cp .env.example .env    # 填 GEMINI_API_KEY，MCP_URL 改為 http://localhost:8010/mcp
+                                    # 或改走 Vertex AI：先 `gcloud auth application-default login`，再設 GOOGLE_GENAI_USE_VERTEXAI=true 與 GOOGLE_CLOUD_PROJECT
+uv sync --group dev
+agents-cli playground               # 網頁介面
+agents-cli run "我要查詢報價單，報價單編號：QT-20260330-001"
+
+# 測試
+uv run pytest tests/unit -q                                            # 不需 LLM、不需 MCP
+MCP_URL=http://localhost:8010/mcp uv run pytest tests/integration -q   # 離線圖測試（有金鑰時一併跑 LLM 測試）
+agents-cli eval run --dataset tests/eval/datasets/quotation-actions.json     # 6 個操作案例（會新增資料，重跑前重灌 seed）
+agents-cli eval run --dataset tests/eval/datasets/quotation-guardrails.json  # 2 個拒答 + 1 個多輪追問
 ```
 
 ### 授權
@@ -314,9 +338,9 @@ MCP_URL=http://localhost:8000/mcp adk web quotation_agent
 
 - **名稱：** EZStore
 - **用途：** B2B 報價與訂單管理系統
-- **語言：** Go（後端）、TypeScript/React（前端）
+- **語言：** Go（後端）、TypeScript/React（前端）、Python 3.12（Agent + MCP Server）
 - **資料庫：** PostgreSQL 16
-- **部署：** Docker Compose（3 個服務：db、backend、frontend）
+- **部署：** Docker Compose（5 個服務：db、backend、frontend、agent、mcp-server）
 
 ### 架構模式
 
@@ -407,7 +431,7 @@ PUT    /api/v1/products/:id
 DELETE /api/v1/products/:id           → 軟刪除
 
 # 報價單
-GET    /api/v1/quotations             → 分頁列表（?page, ?page_size, ?status, ?customer_id）
+GET    /api/v1/quotations             → 分頁列表（?page, ?page_size, ?status, ?customer_id, ?quotation_number）
 GET    /api/v1/quotations/:id         → 含 items[] 與 customer
 POST   /api/v1/quotations             → body: { customer_id, pricing_factor, notes, items: [{product_id, quantity}] }
 PUT    /api/v1/quotations/:id         → 僅草稿可修改；body 同 POST

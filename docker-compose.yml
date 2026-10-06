@@ -37,19 +37,30 @@ services:
     pull_policy: always
     environment:
       BACKEND_URL: http://backend:8080
-      FRONTEND_URL: http://localhost:3000
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
     depends_on:
-      - backend
+      db:
+        condition: service_healthy
+      backend:
+        condition: service_started
 
   agent:
     image: ghcr.io/cshliu77/ezstore/agent:latest
     pull_policy: always
     environment:
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      # 由 .env 提供（見 .env.example）；缺少時服務仍會啟動，但對話會失敗
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      # 改用 Vertex AI 時在 .env 設 GOOGLE_GENAI_USE_VERTEXAI=true 與 GOOGLE_CLOUD_PROJECT，並自行掛載 ADC 憑證
+      GOOGLE_GENAI_USE_VERTEXAI: ${GOOGLE_GENAI_USE_VERTEXAI:-FALSE}
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
+      GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-global}
+      AGENT_MODEL: ${AGENT_MODEL:-gemini-3.8-flash}
       MCP_URL: http://mcp-server:8000/mcp
-      FRONTEND_URL: http://localhost:3000
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      ALLOW_ORIGINS: ${ALLOW_ORIGINS:-http://localhost:3000}
     depends_on:
-      - mcp-server
+      mcp-server:
+        condition: service_healthy
 
   frontend:
     image: ghcr.io/cshliu77/ezstore/frontend:latest
