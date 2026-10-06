@@ -34,7 +34,10 @@
   2.10.3. 沒有設定 API key 時，`docker compose up` 仍要能把整套系統啟動起來，只有 Agent 對話會失敗並回傳清楚的錯誤訊息。
 2.11. MCP Server 提供 Streamable HTTP 的 API 讓 Agent 呼叫。切記不要使用 SSE（Server-Sent Events）傳輸方式實作 MCP Server，SSE 傳輸已被 MCP 標記為 deprecated。
 2.12. 可以修改 Go 後端，但只限新增查詢參數或端點（例如讓 `GET /api/v1/quotations` 支援 `?quotation_number=` 精確查詢），不可改變既有 API 的行為。
-2.13. 用 agents-cli 的 eval 機制（`agents-cli eval run`）建立至少 8 個評估案例：6 個操作各一個、1 個離題拒答、1 個「追問後補資料」的多輪案例。
+2.13. 用 agents-cli 的 eval 機制（`agents-cli eval run`）建立評估案例與指標，檔名與指標名稱請完全依照下列規定（後續的評鑑 LAB `eval-lab.md` 會用到）：
+  - `agent/tests/eval/datasets/quotation-actions.json`：6 個操作各一個案例，`eval_case_id` 用工具名（`get_quotation`、`list_customer_quotations`、`duplicate_quotation`、`update_pricing_factor`、`adjust_total_price`、`convert_to_order`）。
+  - `agent/tests/eval/datasets/quotation-guardrails.json`：`off_topic_weather`、`off_topic_customer_crud` 兩個離題拒答案例，以及 `clarify_then_complete` 一個「先追問再補報價單編號」的多輪案例（用 `agent_data.turns` 寫前一輪）。
+  - `agent/tests/eval/eval_config.yaml` 的 `metrics_to_run` 固定為四個：`custom_response_quality`（LLM 評審，1–5 分）、`link_present`（程式判定，純文字 `/quotations/<id>` 或 `/orders/<id>` 連結，Markdown 連結給 0）、`refusal_or_action`（LLM 評審，離題必須拒答且不呼叫工具；報價單操作必須完成且不可用 Markdown 連結；缺資料追問也算符合）、`agent_turn_count`（回合數）。
 
 ## 3. 文件需求
 
