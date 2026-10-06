@@ -1,0 +1,22 @@
+services:
+  backend:
+    image: ezstore-backend:local
+    pull_policy: never
+    build: ./backend
+
+  mcp-server:
+    image: ezstore-mcp-server:local
+    pull_policy: never
+    build: ./mcp_server
+
+  frontend:
+    image: ezstore-frontend:local
+    pull_policy: never
+    build: ./frontend
+
+  e2e:
+    image: ezstore-e2e:local
+    pull_policy: never
+    build:
+      context: ./frontend
+      dockerfile: e2e/Dockerfile
